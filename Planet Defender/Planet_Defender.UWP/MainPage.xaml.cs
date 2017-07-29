@@ -24,7 +24,7 @@ namespace Planet_Defender.UWP
 
             MessagingCenter.Subscribe<object>(this, "HideCursor", (s) =>
             {
-                Window.Current.CoreWindow.PointerCursor = new Windows.UI.Core.CoreCursor(Windows.UI.Core.CoreCursorType.Cross, 0);
+                Window.Current.CoreWindow.PointerCursor = null;
             });
 
             LoadApplication(new Planet_Defender.App());
@@ -32,12 +32,36 @@ namespace Planet_Defender.UWP
 
         private void PointerMoved(object sender, PointerRoutedEventArgs e)
         {
-            MessagingCenter.Send<object, Tuple<double,double>>(this, "MouseMoved", Tuple.Create<double,double>(e.GetCurrentPoint(this).Position.X, e.GetCurrentPoint(this).Position.Y));
+            double x = e.GetCurrentPoint(this).Position.X;
+            double y = e.GetCurrentPoint(this).Position.Y;
+
+            if (Planet_Defender.App.IsMobile && !(x < Planet_Defender.MainPage.FireButtonWidth && y > (Planet_Defender.MainPage.CanvasInfo.Height - Planet_Defender.MainPage.FireButtonHeight)))
+            {
+                double distX = x - X;
+                double distY = y - Y;
+                MessagingCenter.Send<object, Tuple<double, double>>(this, "MouseDrag", Tuple.Create<double, double>(distX, distY));
+                X = x;
+                Y = y;
+            }
+            else if (!Planet_Defender.App.IsMobile)
+            {
+                MessagingCenter.Send<object, Tuple<double, double>>(this, "MouseMoved", Tuple.Create<double, double>(x, y));
+            }
         }
+
+        private double X = 0;
+        private double Y = 0;
 
         private void PointerPressed(object sender, PointerRoutedEventArgs e)
         {
-            MessagingCenter.Send<object, Tuple<double, double>>(this, "MouseDown", Tuple.Create<double, double>(e.GetCurrentPoint(this).Position.X, e.GetCurrentPoint(this).Position.Y));
+            double x = e.GetCurrentPoint(this).Position.X;
+            double y = e.GetCurrentPoint(this).Position.Y;
+            if (Planet_Defender.App.IsMobile && !(x < Planet_Defender.MainPage.FireButtonWidth && y > (Planet_Defender.MainPage.CanvasInfo.Height - Planet_Defender.MainPage.FireButtonHeight)))
+            {
+                X = x;
+                Y = y;
+            }
+            MessagingCenter.Send<object, Tuple<double, double>>(this, "MouseDown", Tuple.Create<double, double>(x, y));
         }
 
         private void PointerReleased(object sender, PointerRoutedEventArgs e)

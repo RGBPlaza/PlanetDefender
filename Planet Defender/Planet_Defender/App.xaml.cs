@@ -16,6 +16,8 @@ namespace Planet_Defender
             MainPage = new Planet_Defender.MainPage();
         }
 
+        public static bool IsMobile;
+
         protected override void OnStart()
         {
             // Handle when your app starts

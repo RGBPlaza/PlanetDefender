@@ -8,16 +8,12 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="200"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <skia:SKCanvasView x:Name="MainCanvas" Grid.RowSpan="2" Grid.ColumnSpan="2"/>
-
-        <BoxView x:Name="MobileShootButton" Color="Accent" Grid.Row="1"/>
+        <skia:SKCanvasView x:Name="MainCanvas" />
 
     </Grid>
 

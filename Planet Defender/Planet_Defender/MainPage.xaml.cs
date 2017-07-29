@@ -18,10 +18,13 @@ namespace Planet_Defender
         {
             InitializeComponent();
             MainCanvas.PaintSurface += MainCanvas_PaintSurface;
-            MobileShootButton.IsVisible = Device.Idiom != TargetIdiom.Desktop;
+            App.IsMobile = Device.Idiom != TargetIdiom.Desktop;
         }
 
-        private static SKImageInfo canvasInfo;
+        public const int FireButtonHeight = 150;
+        public const int FireButtonWidth = 150;
+
+        public static SKImageInfo CanvasInfo;
         private static bool gameRunning;
 
         public static List<Bullet> FlyingBullets = new List<Bullet>();
@@ -30,13 +33,17 @@ namespace Planet_Defender
         {
             // Retrieve info
             SKCanvas canvas = e.Surface.Canvas;
-            canvasInfo = e.Info;
+            CanvasInfo = e.Info;
 
             // Clear for new frame
             canvas.Clear();
 
             // Draw the planet
-            canvas.DrawCircle(canvasInfo.Width / 2, canvasInfo.Height / 2, (canvasInfo.Height / 5) < 120 ? (canvasInfo.Height / 5) : 120, new SKPaint() { Color = new SKColor(48, 120, 64), IsStroke = false, IsAntialias = true });
+            canvas.DrawCircle(CanvasInfo.Width / 2, CanvasInfo.Height / 2, (CanvasInfo.Height / 5) < 120 ? (CanvasInfo.Height / 5) : 120, new SKPaint() { Color = new SKColor(48, 120, 64), IsStroke = false, IsAntialias = true });
+
+            // Draw the fire button
+            if(App.IsMobile)    
+                canvas.DrawRect(new SKRect(0, CanvasInfo.Height - FireButtonHeight, FireButtonWidth, CanvasInfo.Height), new SKPaint() { Color = SKColors.OrangeRed, IsStroke = true });
 
             try
             {
@@ -48,7 +55,7 @@ namespace Planet_Defender
                     float absoluteX = relX + b.ReleasedFrom.Item1;
                     float absoluteY = relY + b.ReleasedFrom.Item2;
 
-                    if (0 <= absoluteX && absoluteX <= canvasInfo.Width && 0 <= absoluteY && absoluteY <= canvasInfo.Height)
+                    if (0 <= absoluteX && absoluteX <= CanvasInfo.Width && 0 <= absoluteY && absoluteY <= CanvasInfo.Height)
                     {
                         canvas.DrawCircle(absoluteX, absoluteY, 8, new SKPaint() { Color = new SKColor(128, 128, 128) });
                         b.Displacement += 16;
@@ -60,11 +67,22 @@ namespace Planet_Defender
             }
             catch { };
 
+            // Initialise values
+            const string crosshairResourceID = "Planet_Defender.crosshair.png";
+            Assembly assembly = GetType().GetTypeInfo().Assembly;
+
+            // Draw Crosshair
+            using (Stream stream = assembly.GetManifestResourceStream(crosshairResourceID))
+            using (SKManagedStream skStream = new SKManagedStream(stream))
+            {
+                SKBitmap crosshair = SKBitmap.Decode(skStream);
+                canvas.DrawBitmap(crosshair, new SKRect((float)CursorCoords.Item1 - 18, (float)CursorCoords.Item2 - 18, (float)CursorCoords.Item1 + 18, (float)CursorCoords.Item2 + 18));
+            }
+
+            // Draw ship at correct angle
             if (Ship.IsFlying)
             {
-                // Initialise values
                 const string resourceID = "Planet_Defender.rocket.png";
-                Assembly assembly = GetType().GetTypeInfo().Assembly;
 
                 // Load image
                 using (Stream stream = assembly.GetManifestResourceStream(resourceID))
@@ -72,7 +90,6 @@ namespace Planet_Defender
                 {
                     SKBitmap rocketBitmap = SKBitmap.Decode(skStream);
 
-                    // Draw ship at correct angle
                     canvas.RotateRadians(Ship.GraphicRotation, Ship.X, Ship.Y);
                     canvas.DrawBitmap(rocketBitmap, new SKRect(Ship.X - 16, Ship.Y - 28, Ship.X + 16, Ship.Y + 28));
                 }
@@ -81,18 +98,19 @@ namespace Planet_Defender
             else
             {
                 // Location of ship initialisation
-                Ship.SetAbsolutePosition(Tuple.Create<double, double>(500, canvasInfo.Height / 2), canvasInfo);
+                Ship.SetAbsolutePosition(Tuple.Create<double, double>(500, CanvasInfo.Height / 2), CanvasInfo);
                 Ship.IsFlying = true;
             }
+
         }
 
         protected override void OnSizeAllocated(double width, double height)
         {
             base.OnSizeAllocated(width, height);
-            Ship.SetAbsolutePosition(Tuple.Create<double, double>(Ship.X, Ship.Y), canvasInfo);
+            Ship.SetAbsolutePosition(Tuple.Create<double, double>(Ship.X, Ship.Y), CanvasInfo);
         }
 
-        private Tuple<double, double> CursorCoords = Tuple.Create<double, double>(500, canvasInfo.Height / 2);
+        private Tuple<double, double> CursorCoords = Tuple.Create<double, double>(500, CanvasInfo.Height / 2);
 
         protected override void OnAppearing()
         {
@@ -105,45 +123,45 @@ namespace Planet_Defender
             // Event-Driven update of the cursor location
             MessagingCenter.Subscribe<object, Tuple<double, double>>(this, "MouseMoved", (s, coord) =>
             {
-                if (!(coord.Item1 < 200 && coord.Item2 > (canvasInfo.Height - 200)))
-                    CursorCoords = coord;
-                else
-                {
-                    if (Device.Idiom != TargetIdiom.Desktop)
-                        Ship.EquippedGun.FireBullet();
-                    else
-                        CursorCoords = coord;
+                if (!App.IsMobile)
+                    CursorCoords = coord;   // Desktop Mode
+            });
 
-                    // TODO: GET FIRING WORKING ON MOBILE
-
-                }
+            MessagingCenter.Subscribe<object, Tuple<double, double>>(this, "MouseDrag", (s, distances) =>
+            {
+                CursorCoords = Tuple.Create(CursorCoords.Item1 + distances.Item1, CursorCoords.Item2 + distances.Item2);   // Mobile Mode
             });
 
             // When user clicks or screen is pressed
             MessagingCenter.Subscribe<object, Tuple<double, double>>(this, "MouseDown", (s, coord) =>
             {
-                if (Ship.EquippedGun.CanFire)
+                if (!App.IsMobile || (App.IsMobile && coord.Item1 < FireButtonWidth && coord.Item2 > (CanvasInfo.Height - FireButtonHeight)))
                 {
-                    Ship.EquippedGun.IsFiring = true;
-                    Ship.EquippedGun.FireBullet();
-                    Ship.EquippedGun.CanFire = false;
-                    Device.StartTimer(TimeSpan.FromSeconds( 60 / Ship.EquippedGun.ShotSpeed ), () =>
+                    if (Ship.EquippedGun.CanFire)
                     {
-                        Ship.EquippedGun.CanFire = true;
-                        if (Ship.EquippedGun.IsFiring)
+                        Ship.EquippedGun.IsFiring = true;
+                        Ship.EquippedGun.FireBullet();
+                        Ship.EquippedGun.CanFire = false;
+                        Device.StartTimer(TimeSpan.FromSeconds(60 / Ship.EquippedGun.ShotSpeed), () =>
                         {
-                            Ship.EquippedGun.FireBullet();
-                            Ship.EquippedGun.CanFire = false;
-                        }
-                        return Ship.EquippedGun.IsFiring;
-                    });
+                            Ship.EquippedGun.CanFire = true;
+                            if (Ship.EquippedGun.IsFiring)
+                            {
+                              Ship.EquippedGun.FireBullet();
+                              Ship.EquippedGun.CanFire = false;
+                            }
+                            return Ship.EquippedGun.IsFiring;
+                      });
+                    }
                 }
+
             });
 
             // When click or finger is released
             MessagingCenter.Subscribe<object, Tuple<double, double>>(this, "MouseUp", (s, coord) =>
             {
-                Ship.EquippedGun.IsFiring = false;
+                if (!App.IsMobile || (App.IsMobile && coord.Item1 < FireButtonWidth && coord.Item2 > (CanvasInfo.Height - FireButtonHeight)))
+                    Ship.EquippedGun.IsFiring = false;
             });
 
             // GameLoop
@@ -151,18 +169,16 @@ namespace Planet_Defender
             {
 
                 // Update location of ship sprite
-                Ship.SetFramePosition(CursorCoords, canvasInfo);
+                Ship.SetFramePosition(CursorCoords, CanvasInfo);
 
                 // Update rotation of ship sprite
-                Ship.SetRotation(CursorCoords, canvasInfo);
+                Ship.SetRotation(CursorCoords, CanvasInfo);
 
                 // Update the canvas
                 MainCanvas.InvalidateSurface();
 
                 return gameRunning;
             });
-
-
         }
 
         protected override void OnDisappearing()
@@ -192,15 +208,16 @@ namespace Planet_Defender
 
             // Set ship rotation
             if (cursorCoord.Item1 > X)
+            {
                 GraphicRotation = (float)angleFromCursor + (float)Math.PI / 2;   // Cursor is on the right hand side of the ship
+            }
             else
+            {
                 GraphicRotation = (float)angleFromCursor - (float)Math.PI / 2;   // Cursor is on the  left hand side of the ship
+            }
 
             // Set angle on which bullets are shot
-            if (cursorCoord.Item2 <= canvasInfo.Height / 2)
-                ShotAngle = Math.PI + angleToCursor;                             // Cursor in in the upper half of the screen
-            else
-                ShotAngle = angleToCursor;                                       // Cursor in in the lower half of the screen
+            ShotAngle = angleToCursor - Math.PI;
 
             // Pythagoras theorem to work out displacements from the centre
             var shipCentreDisplacement = Math.Sqrt(Math.Pow(X - (canvasInfo.Width/2), 2) + Math.Pow(Y - (canvasInfo.Height / 2), 2));
@@ -208,7 +225,13 @@ namespace Planet_Defender
             
             // If the cursor is closer to the centre, the shot angle must be flipped
             if (cursorCentreDisplacement < shipCentreDisplacement)
-                ShotAngle += Math.PI;   
+                ShotAngle += Math.PI;
+
+            if (cursorCoord.Item2 > canvasInfo.Height / 2)                       // Cursor in in the lower half of the screen
+                ShotAngle += Math.PI;
+            else if (cursorCoord.Item2 == canvasInfo.Height / 2)                 // Cursor in in the vertical centre of the screen
+                ShotAngle = angleToCursor + Math.PI;
+
         }
 
         public static void SetFramePosition(Tuple<double, double> cursorCoord, SKImageInfo canvasInfo)
