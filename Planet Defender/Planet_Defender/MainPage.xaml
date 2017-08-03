@@ -5,7 +5,7 @@
              x:Class="Planet_Defender.MainPage"
              xmlns:skia="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms">
 
-    <Grid>
+    <Grid BackgroundColor="#111111">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>

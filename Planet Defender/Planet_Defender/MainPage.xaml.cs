@@ -227,7 +227,7 @@ namespace Planet_Defender
             if (cursorCentreDisplacement < shipCentreDisplacement)
                 ShotAngle += Math.PI;
 
-            if (cursorCoord.Item2 > canvasInfo.Height / 2)                       // Cursor in in the lower half of the screen
+            if (cursorCoord.Item2 > canvasInfo.Height / 2 && Y > canvasInfo.Height)                       // Cursor in in the lower half of the screen
                 ShotAngle += Math.PI;
             else if (cursorCoord.Item2 == canvasInfo.Height / 2)                 // Cursor in in the vertical centre of the screen
                 ShotAngle = angleToCursor + Math.PI;

@@ -29,6 +29,9 @@ namespace Planet_Defender.UWP
 
             LoadApplication(new Planet_Defender.App());
         }
+        
+        private double X = 0;
+        private double Y = 0;
 
         private void PointerMoved(object sender, PointerRoutedEventArgs e)
         {
@@ -48,9 +51,6 @@ namespace Planet_Defender.UWP
                 MessagingCenter.Send<object, Tuple<double, double>>(this, "MouseMoved", Tuple.Create<double, double>(x, y));
             }
         }
-
-        private double X = 0;
-        private double Y = 0;
 
         private void PointerPressed(object sender, PointerRoutedEventArgs e)
         {
