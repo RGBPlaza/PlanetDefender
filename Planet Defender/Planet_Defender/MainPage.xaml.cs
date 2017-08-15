@@ -164,6 +164,8 @@ namespace Planet_Defender
                     Ship.EquippedGun.IsFiring = false;
             });
 
+            Ship.EquipGun(new SpreadGun());
+
             // GameLoop
             Device.StartTimer(TimeSpan.FromMilliseconds(16), () =>
             {
@@ -196,7 +198,7 @@ namespace Planet_Defender
         public static float Y { get; set; } = 0;
         public static float GraphicRotation { get; set; } = 0;
         public static double ShotAngle { get; set; }
-        public static Gun EquippedGun { get; private set; } = new BasicGun();
+        public static Gun EquippedGun { get; private set; }
 
         public static void SetRotation(Tuple<double, double> cursorCoord, SKImageInfo canvasInfo)
         {
@@ -227,10 +229,14 @@ namespace Planet_Defender
             if (cursorCentreDisplacement < shipCentreDisplacement)
                 ShotAngle += Math.PI;
 
-            if (cursorCoord.Item2 > canvasInfo.Height / 2 && Y > canvasInfo.Height)                       // Cursor in in the lower half of the screen
+            if (cursorCoord.Item2 > canvasInfo.Height / 2)         // Cursor in in the lower half of the screen and cursor is below ship
                 ShotAngle += Math.PI;
-            else if (cursorCoord.Item2 == canvasInfo.Height / 2)                 // Cursor in in the vertical centre of the screen
+            else if (cursorCoord.Item2 == canvasInfo.Height / 2 && cursorCoord.Item2 > Y)   // Cursor in in the vertical centre of the screen
+            {              
                 ShotAngle = angleToCursor + Math.PI;
+                if (cursorCoord.Item1 > canvasInfo.Width / 2)
+                    ShotAngle += Math.PI;
+            }
 
         }
 
@@ -321,7 +327,7 @@ namespace Planet_Defender
         public bool IsFiring { get; set; } = false;
         public bool IsReloading { get; set; } = false;
 
-        public void FireBullet()
+        public virtual void FireBullet()
         {
             if (BulletsRemaining > 0)
             {   
@@ -356,6 +362,59 @@ namespace Planet_Defender
             ReloadTime = TimeSpan.FromSeconds(5);
             ShotSpeed = 200;
         }
+    }
+
+    public class MachineGun : Gun
+    {
+        public MachineGun()
+        {
+            ClipSize = 20;
+            BulletsRemaining = ClipSize;
+            BulletSpeed = 2;
+            ReloadTime = TimeSpan.FromSeconds(5);
+            ShotSpeed = 800;
+        }
+    }
+
+    public class SpreadGun : Gun
+    {
+        public SpreadGun()
+        {
+            ClipSize = 8;
+            BulletsRemaining = ClipSize;
+            BulletSpeed = 1;
+            ReloadTime = TimeSpan.FromSeconds(6);
+            ShotSpeed = 200;
+        }
+
+        public override void FireBullet()
+        {
+            if (BulletsRemaining > 0)
+            {
+                // Fire bullet then decrement ammo
+                MainPage.FlyingBullets.Add(new Bullet() { ReleasedFrom = Tuple.Create(Ship.X, Ship.Y), Angle = Ship.ShotAngle - (Math.PI / 8), Speed = BulletSpeed });
+                MainPage.FlyingBullets.Add(new Bullet() { ReleasedFrom = Tuple.Create(Ship.X, Ship.Y), Angle = Ship.ShotAngle - (Math.PI / 16), Speed = BulletSpeed });
+                MainPage.FlyingBullets.Add(new Bullet() { ReleasedFrom = Tuple.Create(Ship.X, Ship.Y), Angle = Ship.ShotAngle, Speed = BulletSpeed });
+                MainPage.FlyingBullets.Add(new Bullet() { ReleasedFrom = Tuple.Create(Ship.X, Ship.Y), Angle = Ship.ShotAngle + (Math.PI / 16), Speed = BulletSpeed });
+                MainPage.FlyingBullets.Add(new Bullet() { ReleasedFrom = Tuple.Create(Ship.X, Ship.Y), Angle = Ship.ShotAngle + (Math.PI / 8), Speed = BulletSpeed });
+                BulletsRemaining--;
+            }
+            else
+            {
+                // Reload - time delay
+                if (!IsReloading)
+                {
+                    IsReloading = true;
+                    Device.StartTimer(ReloadTime, () =>
+                    {
+                        BulletsRemaining = ClipSize;
+                        IsReloading = false;
+                        return false;
+                    });
+                }
+            }
+        }
+
     }
 
     public class Bullet
